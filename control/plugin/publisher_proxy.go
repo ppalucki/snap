@@ -42,6 +42,7 @@ type publisherPluginProxy struct {
 
 func (p *publisherPluginProxy) Publish(args []byte, reply *[]byte) error {
 	defer catchPluginPanic(p.Session.Logger())
+	p.Session.Logger().Println("Publish called")
 	p.Session.ResetHeartbeat()
 
 	dargs := &PublishArgs{}
@@ -54,5 +55,6 @@ func (p *publisherPluginProxy) Publish(args []byte, reply *[]byte) error {
 	if err != nil {
 		return errors.New(fmt.Sprintf("Publish call error: %v", err.Error()))
 	}
+	p.Session.Logger().Printf("Publish input=%q", dargs.ContentType)
 	return nil
 }

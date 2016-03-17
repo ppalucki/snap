@@ -23,6 +23,7 @@ import (
 	"crypto/rsa"
 	"encoding/gob"
 	"errors"
+	"fmt"
 	"net"
 	"net/rpc"
 	"time"
@@ -212,7 +213,7 @@ func (p *PluginNativeClient) GetConfigPolicy() (*cpolicy.ConfigPolicy, error) {
 	var reply []byte
 	err := p.connection.Call("SessionState.GetConfigPolicy", []byte{}, &reply)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetConfigPolicy() error: %v", err)
 	}
 
 	r := &plugin.GetConfigPolicyReply{}

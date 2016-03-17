@@ -174,6 +174,7 @@ func (s *SessionState) KillChan() chan int {
 }
 
 func (s *SessionState) isDaemon() bool {
+	// log.Println("isDaemon:", !s.NoDaemon)
 	return !s.NoDaemon
 }
 

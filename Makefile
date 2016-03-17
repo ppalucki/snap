@@ -15,9 +15,7 @@
 #See the License for the specific language governing permissions and
 #limitations under the License.
 
-default:
-	$(MAKE) deps
-	$(MAKE) all
+default: deps all
 deps:
 	bash -c "./scripts/deps.sh"
 test:

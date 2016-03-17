@@ -23,12 +23,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
 
 	"github.com/codegangsta/cli"
+	"github.com/intelsdi-x/snap/mgmt/rest/client"
 )
 
 func loadPlugin(ctx *cli.Context) {
@@ -116,6 +118,23 @@ func unloadPlugin(ctx *cli.Context) {
 	fmt.Printf("Type: %s\n", r.Type)
 }
 
+// sortable types
+type SortableAvaiablePlugins []client.AvailablePlugin
+
+func (s SortableAvaiablePlugins) Len() int      { return len(s) }
+func (s SortableAvaiablePlugins) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s SortableAvaiablePlugins) Less(i int, j int) bool {
+	return strings.Compare(s[i].Name, s[j].Name) <= 0
+}
+
+type SortableLoadedPlugins []client.LoadedPlugin
+
+func (s SortableLoadedPlugins) Len() int      { return len(s) }
+func (s SortableLoadedPlugins) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s SortableLoadedPlugins) Less(i int, j int) bool {
+	return strings.Compare(s[i].Name, s[j].Name) <= 0
+}
+
 func listPlugins(ctx *cli.Context) {
 	plugins := pClient.GetPlugins(ctx.Bool("running"))
 	if plugins.Err != nil {
@@ -125,12 +144,20 @@ func listPlugins(ctx *cli.Context) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 8, 1, '\t', 0)
 	if ctx.Bool("running") {
 		printFields(w, false, 0, "NAME", "HIT COUNT", "LAST HIT", "TYPE")
-		for _, rp := range plugins.AvailablePlugins {
+
+		sortableAvaiablePlugins := append(SortableAvaiablePlugins{}, plugins.AvailablePlugins...)
+		sort.Sort(sortableAvaiablePlugins)
+
+		for _, rp := range sortableAvaiablePlugins {
 			printFields(w, false, 0, rp.Name, rp.HitCount, time.Unix(rp.LastHitTimestamp, 0).Format(timeFormat), rp.Type)
 		}
 	} else {
 		printFields(w, false, 0, "NAME", "VERSION", "TYPE", "SIGNED", "STATUS", "LOADED TIME")
-		for _, lp := range plugins.LoadedPlugins {
+
+		sortableLoadedPlugins := append(SortableLoadedPlugins{}, plugins.LoadedPlugins...)
+		sort.Sort(sortableLoadedPlugins)
+
+		for _, lp := range sortableLoadedPlugins {
 			printFields(w, false, 0, lp.Name, lp.Version, lp.Type, lp.Signed, lp.Status, lp.LoadedTime().Format(timeFormat))
 		}
 	}

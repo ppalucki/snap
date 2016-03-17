@@ -1,0 +1,22 @@
+---
+  version: 1
+  schedule: 
+    type: "simple"
+    interval: "15s"
+  workflow: 
+    collect: 
+      metrics: 
+        /serenity2/input/metric1: {}
+        /serenity2/input/metric2: {}
+      process: 
+        - 
+          plugin_name: "p1"
+          process: 
+            -
+              plugin_name: "p2"
+              publish: 
+                - 
+                  plugin_name: "o2"
+          publish: 
+            - 
+              plugin_name: "o1"

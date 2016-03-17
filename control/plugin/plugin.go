@@ -89,7 +89,7 @@ const (
 var (
 	// Timeout settings
 	// How much time must elapse before a lack of Ping results in a timeout
-	PingTimeoutDurationDefault = time.Millisecond * 1500
+	PingTimeoutDurationDefault = time.Millisecond * 15000 // SACREWASTHERE
 	// How many successive PingTimeouts must occur to equal a failure.
 	PingTimeoutLimit = 3
 
@@ -109,6 +109,7 @@ var (
 )
 
 type Plugin interface {
+	// Important, you need to return cpolicy create with cpolicy.New() constructor (or you get "Unexpected EOF"!)
 	GetConfigPolicy() (*cpolicy.ConfigPolicy, error)
 }
 

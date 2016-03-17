@@ -45,6 +45,7 @@ type processorPluginProxy struct {
 
 func (p *processorPluginProxy) Process(args []byte, reply *[]byte) error {
 	defer catchPluginPanic(p.Session.Logger())
+	p.Session.Logger().Println("Process called")
 	p.Session.ResetHeartbeat()
 
 	dargs := &ProcessorArgs{}
@@ -58,6 +59,7 @@ func (p *processorPluginProxy) Process(args []byte, reply *[]byte) error {
 	if err != nil {
 		return errors.New(fmt.Sprintf("Processor call error: %v", err.Error()))
 	}
+	p.Session.Logger().Printf("Process input=%q  output=%q", dargs.ContentType, r.ContentType)
 
 	*reply, err = p.Session.Encode(r)
 	if err != nil {

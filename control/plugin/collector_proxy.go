@@ -88,6 +88,7 @@ func (c *collectorPluginProxy) CollectMetrics(args []byte, reply *[]byte) error 
 	if err != nil {
 		return errors.New(fmt.Sprintf("CollectMetrics call error : %s", err.Error()))
 	}
+	c.Session.Logger().Printf("CollectMetrics input=%#v  ouput=%#v", dargs.PluginMetricTypes, ms)
 
 	r := CollectMetricsReply{PluginMetrics: ms}
 	*reply, err = c.Session.Encode(r)
