@@ -1,4 +1,7 @@
 /*
+git submodule update --init
+(cd serenity2/heracles/mutilate/; scons)
+(cd serenity2/heracles/memcached/; ./autogen.sh && ./configure && make)
 sudo -Es
 go run ./serenity2/heracles/heracles.go
 */
@@ -10,6 +13,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/user"
@@ -31,8 +35,29 @@ const (
 )
 
 var (
-	quit = make(chan struct{})
+	// quit brodcast signal
+	quit   = make(chan struct{})
+	numcpu = runtime.NumCPU()
 )
+
+// expects having heracles db a creates points in heracles measurments
+func store(key string, value float64) {
+	log.Printf("%s = %v\n", key, value)
+
+	// https://docs.influxdata.com/influxdb/v0.9/write_protocols/line/
+	point := fmt.Sprintf("heracles %s=%f", key, value)
+
+	resp, err := http.Post("http://127.0.0.1:8086/write?db=heracles",
+		"",
+		bytes.NewBufferString(point),
+	)
+	check(err)
+	if resp.StatusCode != http.StatusNoContent { //204
+		body, err := ioutil.ReadAll(resp.Body)
+		check(err)
+		log.Printf("error body = %s\n", body)
+	}
+}
 
 // search for qps
 func mutilateSearch(percentile, latencyUs int) (qps int) {
@@ -41,6 +66,8 @@ func mutilateSearch(percentile, latencyUs int) (qps int) {
 		"--search", fmt.Sprintf("%d:%d", percentile, latencyUs),
 		"--server", server,
 		"--time", timeout, // just for one second
+		"--threads", strconv.Itoa(numcpu),
+		"--connections", strconv.Itoa(numcpu),
 	)
 	output, err := cmd.Output()
 	if ee, ok := err.(*exec.ExitError); ok {
@@ -50,6 +77,7 @@ func mutilateSearch(percentile, latencyUs int) (qps int) {
 
 	re := regexp.MustCompile(`Total QPS = (\d+)`)
 	qpsRaw := re.FindSubmatch(output)[1]
+	fmt.Printf("target qps = %s (for percentile=%d latency=%d)\n", qpsRaw, percentile, latencyUs)
 	return atoi(string(qpsRaw))
 }
 
@@ -75,6 +103,8 @@ func mutilateQps(qps int) (sli float64) {
 		"--qps", fmt.Sprintf("%d", qps),
 		"--server", server,
 		"--time", timeout,
+		"--threads", strconv.Itoa(numcpu),
+		"--connections", strconv.Itoa(numcpu),
 	)
 	output, err := cmd.Output()
 	if ee, ok := err.(*exec.ExitError); ok {
@@ -83,7 +113,7 @@ func mutilateQps(qps int) (sli float64) {
 	check(err)
 
 	sli = parseQpsSli(output)
-	log.Println("qps sli =", sli)
+	// log.Println("qps sli =", sli)
 	return sli
 }
 
@@ -114,6 +144,8 @@ func mutilateScan(min, max, step int) (slis map[float64]float64) {
 		"--scan", fmt.Sprintf("%d:%d:%d", min, max, step),
 		"--server", server,
 		"--time", timeout, // just for one second
+		"--threads", strconv.Itoa(numcpu),
+		"--connections", strconv.Itoa(numcpu),
 	).Output()
 	check(err)
 
@@ -122,7 +154,16 @@ func mutilateScan(min, max, step int) (slis map[float64]float64) {
 	return
 }
 
+func cpucores(cgroup string, cores int) {
+	store(cgroup+"_cores", float64(cores))
+	cpuset(cgroup, fmt.Sprintf("0-%d", cores-1))
+}
+
+// value like 0, 1, 0-1, 0,1,2,3
+// https://www.kernel.org/doc/Documentation/cgroup-v1/cpusets.txt
+// zero based
 func cpuset(cgroup, value string) {
+
 	err := ioutil.WriteFile("/sys/fs/cgroup/cpuset/"+cgroup+"/cpuset.cpus", []byte(value), os.ModePerm)
 	check(err)
 	// err = ioutil.WriteFile("/sys/fs/cgroup/cpuset/"+cgroup+"/cpuset.mems", []byte(value), os.ModePerm)
@@ -130,14 +171,18 @@ func cpuset(cgroup, value string) {
 }
 
 // memcache start memcache daemon
-func memcache() {
+func memcache(threads int) {
 	u, err := user.Current()
 	check(err)
 
 	log.Println("memcache starting...")
-	cmd := exec.Command(memcachedbin, "-u", u.Name)
+	cmd := exec.Command(memcachedbin,
+		"-u", u.Name,
+		"-t", strconv.Itoa(threads),
+	)
 	err = cmd.Start()
 	check(err)
+	log.Println("memcached pid =", cmd.Process.Pid, "threads =", threads)
 
 	log.Println("memcache put into prod cgroup")
 	err = ioutil.WriteFile("/sys/fs/cgroup/cpuset/prod/tasks", []byte(strconv.Itoa(cmd.Process.Pid)), os.ModePerm)
@@ -233,7 +278,7 @@ func exp1sp() {
 	cpuset("be", "0")
 
 	// prod
-	go memcache()
+	go memcache(numcpu)
 
 	// load generator
 	qps := mutilateSearch(99, 1000)
@@ -280,26 +325,95 @@ func exp2be() {
 }
 
 // exp 3
-func exp3heracles() {
+func exp3prodalone() {
+
+	// algorithm controllers
+	algo := func(sli float64) {
+		if sli > 6000 {
+			cpucores("prod", numcpu)
+		} else {
+			cpucores("prod", 1)
+		}
+	}
+
+	cgcreate("prod")
+	cpucores("prod", numcpu)
+
+	// prod
+	go memcache(numcpu)
+
+	// load generator
+	qps := mutilateSearch(95, 1000)
+
+	for {
+		sli := mutilateQps(qps)
+		store("sli", sli)
+
+		algo(sli)
+
+		time.Sleep(1 * time.Second)
+	}
+}
+
+// exp 3
+func exp3prodalone2() {
+
+	up := true
+	cores := 1
+
+	// algorithm controllers
+	algo := func(sli float64) {
+		cpucores("prod", cores)
+		if up {
+			cores += 1
+		} else {
+			cores -= 1
+		}
+		if cores == numcpu || cores == 1 {
+			up = !up
+		}
+	}
+
+	cgcreate("prod")
+	cpucores("prod", numcpu)
+
+	// prod
+	go memcache(numcpu)
+
+	// load generator
+	qps := mutilateSearch(95, 1000)
+
+	for {
+		sli := mutilateQps(qps)
+		store("sli", sli)
+
+		algo(sli)
+
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func exp4heracles() {
 
 	// algorithm controllers
 	algo := func(sli float64) {
 		if sli < 15.0 {
-			log.Println("set cpu 1")
-			cpuset("be", "1") // one core
+			cpucores("be", 1)
 		} else {
-			log.Println("set cpu 0")
-			cpuset("be", "0") // all cores
+			cpucores("be", numcpu/2)
 		}
 	}
 
 	cgcreate("prod")
 	cgcreate("be")
-	cpuset("prod", "0")
-	cpuset("be", "0")
+	cpucores("prod", numcpu)
+	cpucores("be", numcpu)
 
-	// prod
-	go memcache()
+	// start prod
+	go memcache(numcpu)
+
+	// start be
+	go be(numcpu, quit)
 
 	// load generator
 	qps := mutilateSearch(99, 1000)
@@ -307,6 +421,7 @@ func exp3heracles() {
 
 	for {
 		sli := mutilateQps(qps)
+		store("sli", sli)
 
 		algo(sli)
 
@@ -317,5 +432,7 @@ func exp3heracles() {
 func main() {
 	// exp1sp()
 	// exp2be()
-	exp3heracles()
+	// exp3prodalone()
+	exp3prodalone2()
+	// exp4heracles()
 }
