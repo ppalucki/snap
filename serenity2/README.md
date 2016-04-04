@@ -287,3 +287,43 @@ example task:
 ./build/bin/snapctl task create -t serenity2/tasks/output_clones.yaml
 ```
 
+
+## Experimenting
+
+### mutilate build & compile
+
+(cd serenity2/heracles/mutilate/; scons)
+
+./serenity2/heracles/mutilate/mutilate --version
+
+### memcache build & compile
+(cd serenity2/heracles/memcached/; ./autogen.sh && ./configure && make)
+
+./serenity2/heracles/memcached/memcached -V
+
+### aliases
+alias memcached=./serenity2/heracles/memcached/memcached mutilate=./serenity2/heracles/mutilate/mutilate
+
+### search
+mutilate --server 127.0.0.1 --search 95:1000 --time 1 --save tmp/search.log
+
+### scan
+mutilate --server 127.0.0.1 --scan 0:80000:10000 --time 1 --save tmp/scan.log
+
+### cgroups prepare (as root)
+sudo -Es
+
+mkdir /sys/fs/cgroup/cpuset/prod
+mkdir /sys/fs/cgroup/cpuset/be
+
+#### clean
+cgdelete -g cpuset:/prod 
+cgdelete -g cpuset:/be
+
+### set cpus/mems
+echo 0 > /sys/fs/cgroup/cpuset/prod/cpuset.mems
+echo 0 > /sys/fs/cgroup/cpuset/prod/cpuset.cpus
+
+### memcache
+cgexec -g cpuset:/prod ./serenity2/heracles/memcached/memcached
+

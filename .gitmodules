@@ -1,0 +1,6 @@
+[submodule "serenity2/heracles/memcached"]
+	path = serenity2/heracles/memcached
+	url = https://github.com/memcached/memcached
+[submodule "serenity2/heracles/mutilate"]
+	path = serenity2/heracles/mutilate
+	url = https://github.com/leverich/mutilate
