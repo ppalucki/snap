@@ -30,8 +30,7 @@ const (
 	mutilatebin  = "./serenity2/heracles/mutilate/mutilate"
 
 	// mutilate options
-	timeout = "1" // mutilate --time x
-	server  = "127.0.0.1"
+	server = "127.0.0.1"
 )
 
 var (
@@ -40,13 +39,10 @@ var (
 	numcpu = runtime.NumCPU()
 )
 
-// expects having heracles db a creates points in heracles measurments
-func store(key string, value float64) {
-	log.Printf("%s = %v\n", key, value)
+// post body to influxdb
+func post(point string) {
 
-	// https://docs.influxdata.com/influxdb/v0.9/write_protocols/line/
-	point := fmt.Sprintf("heracles %s=%f", key, value)
-
+	// https://docs.influxdata.com/influxdb/v0.12/write_protocols/line/
 	resp, err := http.Post("http://127.0.0.1:8086/write?db=heracles",
 		"",
 		bytes.NewBufferString(point),
@@ -59,13 +55,26 @@ func store(key string, value float64) {
 	}
 }
 
+// expects having heracles db a creates points in "heracles" measurments
+func store(key string, value float64) {
+	log.Printf("%s = %v\n", key, value)
+	point := fmt.Sprintf("heracles %s=%f", key, value)
+	post(point)
+}
+
+// "events" measurment
+func event(text ...interface{}) {
+	point := fmt.Sprintf("events text=%q", fmt.Sprint(text...))
+	post(point)
+}
+
 // search for qps
-func mutilateSearch(percentile, latencyUs int) (qps int) {
+func mutilateSearch(percentile, latencyUs int, duration int) (qps int) {
 
 	cmd := exec.Command(mutilatebin,
 		"--search", fmt.Sprintf("%d:%d", percentile, latencyUs),
 		"--server", server,
-		"--time", timeout, // just for one second
+		"--time", strconv.Itoa(duration), // just for one second
 		"--threads", strconv.Itoa(numcpu),
 		"--connections", strconv.Itoa(numcpu),
 	)
@@ -97,12 +106,13 @@ func parseQpsSli(mutilateOutput []byte) (sli float64) {
 	return
 }
 
-func mutilateQps(qps int) (sli float64) {
+// duration seconds
+func mutilateQps(qps int, duration int) (sli float64) {
 
 	cmd := exec.Command(mutilatebin,
-		"--qps", fmt.Sprintf("%d", qps),
+		"--qps", strconv.Itoa(qps),
 		"--server", server,
-		"--time", timeout,
+		"--time", strconv.Itoa(duration),
 		"--threads", strconv.Itoa(numcpu),
 		"--connections", strconv.Itoa(numcpu),
 	)
@@ -139,11 +149,11 @@ func parseScanSlis(mutilateOutput []byte) (slis map[float64]float64) {
 }
 
 // mutilate scan over given load points (qps) result map qps -> 99th percentials in us
-func mutilateScan(min, max, step int) (slis map[float64]float64) {
+func mutilateScan(min, max, step, duration int) (slis map[float64]float64) {
 	output, err := exec.Command(mutilatebin,
 		"--scan", fmt.Sprintf("%d:%d:%d", min, max, step),
 		"--server", server,
-		"--time", timeout, // just for one second
+		"--time", strconv.Itoa(duration),
 		"--threads", strconv.Itoa(numcpu),
 		"--connections", strconv.Itoa(numcpu),
 	).Output()
@@ -295,14 +305,14 @@ func exp1sp() {
 	go memcache(numcpu)
 
 	// load generator
-	qps := mutilateSearch(99, 1000)
+	qps := mutilateSearch(99, 1000, 1)
 	fmt.Printf("target qps = %+v\n", qps)
 
 	repeat := 1
 
 	// slis
 	for i := 0; i < repeat; i++ {
-		slis := mutilateScan(0, qps, qps/2)
+		slis := mutilateScan(0, qps, qps/2, 1)
 		fmt.Printf("avg=%f slis=%+v\n", avg(slis), slis)
 	}
 
@@ -313,7 +323,7 @@ func exp1sp() {
 		go be(core, bequit)
 		// slis
 		for i := 0; i < repeat; i++ {
-			slis := mutilateScan(0, qps, qps/2)
+			slis := mutilateScan(0, qps, qps/2, 1)
 			fmt.Printf("avg=%f slis=%+v\n", avg(slis), slis)
 		}
 		close(bequit)
@@ -362,10 +372,10 @@ func exp3prodalone() {
 	go memcache(numcpu)
 
 	// load generator
-	qps := mutilateSearch(95, 1000)
+	qps := mutilateSearch(95, 1000, 1)
 
 	for {
-		sli := mutilateQps(qps)
+		sli := mutilateQps(qps, 1)
 		store("sli", sli)
 
 		algo(sli)
@@ -376,6 +386,8 @@ func exp3prodalone() {
 
 // exp 3
 func exp3prodalone2() {
+
+	event("exp3prodalone2")
 
 	up := true
 	cores := 1
@@ -390,6 +402,7 @@ func exp3prodalone2() {
 		}
 		if cores == numcpu || cores == 1 {
 			up = !up
+			event("switch up = ", up)
 		}
 	}
 
@@ -397,18 +410,23 @@ func exp3prodalone2() {
 	cpucores("prod", numcpu)
 
 	// prod
+	event("memcached start")
 	go memcache(numcpu)
 
 	// load generator
-	qps := mutilateSearch(95, 1000)
 
+	qps := mutilateSearch(95, 1000, 1)
+	event("mutilateSearch returns ", qps, "qps")
+
+	// var loopDuration time.Duration = 1
 	for {
-		sli := mutilateQps(qps)
+		store("qps", float64(qps))
+		sli := mutilateQps(qps, 1)
 		store("sli", sli)
 
 		algo(sli)
 
-		time.Sleep(1 * time.Second)
+		// time.Sleep(loopDuration * time.Second)
 	}
 }
 
@@ -435,11 +453,11 @@ func exp4heracles() {
 	go be(numcpu, quit)
 
 	// load generator
-	qps := mutilateSearch(99, 1000)
+	qps := mutilateSearch(99, 1000, 1)
 	fmt.Printf("target qps = %+v\n", qps)
 
 	for {
-		sli := mutilateQps(qps)
+		sli := mutilateQps(qps, 1)
 		store("sli", sli)
 
 		algo(sli)
