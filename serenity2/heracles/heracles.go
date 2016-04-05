@@ -210,24 +210,38 @@ func be(cores int, bequit chan struct{}) {
 	// log.Println("start be with new sid", sid)
 	var err error
 
-	cmd := exec.Command("stress", "--cpu", strconv.Itoa(cores))
+	// move into group using cgexec
+
+	cmd := exec.Command("cgexec", "-g", "cpuset:be", "stress", "--cpu", strconv.Itoa(cores))
 	err = cmd.Start()
-	// race ??? fork?
 	pid := cmd.Process.Pid
-	log.Println("be with pid", pid)
-	time.Sleep(10 * time.Second)
+	log.Println("be with pid = ", pid)
 
-	err = syscall.Setpgid(pid, pid)
+	// f..k how to control stress! (forking process)
+	// TO READ: https://lwn.net/Articles/604609/
+	var sid int
+	sid, err = syscall.Setsid()
+	check(err)
+	log.Println("sid = ", sid)
+
+	err = syscall.Setpgid(pid, sid)
 	check(err)
 
-	check(err)
+	// race ??? fork?
+	// log.Println("be with pid = ", pid)
+	//
+	// // try setpgid
+	// log.Println("setpgid", pid, pid)
+
 	select {
 	case <-bequit:
 		// err = cmd.Process.Signal(syscall.SIGINT) // not just to parent process but to whole process group (negative pid)
-		err = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
-		log.Println("sent interapt signal to ", cmd.Process.Pid)
-		check(err)
+		// log.Println("got quit...killing...")
+		// err = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+		// log.Println("sent interapt signal to ", -cmd.Process.Pid)
+		// check(err)
 	}
+
 	err = cmd.Wait() // ignore killed signal
 	if err != nil {
 		log.Println(err)
@@ -315,12 +329,17 @@ func exp1sp() {
 func exp2be() {
 	bequit := make(chan struct{})
 	go be(1, bequit)
-	log.Println("sleep")
-	time.Sleep(45 * time.Second)
+	log.Println("sleep for 10")
+	time.Sleep(10 * time.Second)
+
+	// quit
 	log.Println("quit")
 	close(bequit)
-	log.Println("sleep again")
+
+	log.Println("sleep for 15")
 	time.Sleep(15 * time.Second)
+
+	// done
 	log.Println("exit")
 }
 
