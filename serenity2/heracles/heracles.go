@@ -29,6 +29,8 @@ const (
 	memcachedbin = "./serenity2/heracles/memcached/memcached"
 	mutilatebin  = "./serenity2/heracles/mutilate/mutilate"
 
+	mesurmentName = "heracles"
+
 	// mutilate options
 	server = "127.0.0.1"
 )
@@ -56,10 +58,14 @@ func post(point string) {
 }
 
 // expects having heracles db a creates points in "heracles" measurments
-func store(key string, value float64) {
-	log.Printf("%s = %v\n", key, value)
-	point := fmt.Sprintf("heracles %s=%f", key, value)
+func storeTs(key string, value float64, ts time.Time) {
+	// log.Printf("%s = %v\n", key, value)
+	point := fmt.Sprintf("%s %s=%f %d", mesurmentName, key, value, ts.Nanosecond())
 	post(point)
+}
+
+func store(key string, value float64) {
+	storeTs(key, value, time.Now())
 }
 
 // "events" measurment
@@ -149,6 +155,7 @@ func parseScanSlis(mutilateOutput []byte) (slis map[float64]float64) {
 }
 
 // mutilate scan over given load points (qps) result map qps -> 99th percentials in us
+// TODO: mutialte scan reports data after each load point - so it is ok, to ge t
 func mutilateScan(min, max, step, duration int) (slis map[float64]float64) {
 	output, err := exec.Command(mutilatebin,
 		"--scan", fmt.Sprintf("%d:%d:%d", min, max, step),
@@ -223,19 +230,27 @@ func be(cores int, bequit chan struct{}) {
 	// move into group using cgexec
 
 	cmd := exec.Command("cgexec", "-g", "cpuset:be", "stress", "--cpu", strconv.Itoa(cores))
+
+	// own process group (thx to Bartek)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
 	err = cmd.Start()
+
+	// cmd.SysProcAttr.Setpgid = true
 	pid := cmd.Process.Pid
 	log.Println("be with pid = ", pid)
 
 	// f..k how to control stress! (forking process)
 	// TO READ: https://lwn.net/Articles/604609/
-	var sid int
-	sid, err = syscall.Setsid()
-	check(err)
-	log.Println("sid = ", sid)
-
-	err = syscall.Setpgid(pid, sid)
-	check(err)
+	// var sid int
+	// sid, err = syscall.Setsid()
+	// check(err)
+	// log.Println("sid = ", sid)
+	//
+	// time.Sleep(15 * time.Second)
+	//
+	// err = syscall.Setpgid(pid, sid)
+	// check(err)
 
 	// race ??? fork?
 	// log.Println("be with pid = ", pid)
@@ -247,9 +262,9 @@ func be(cores int, bequit chan struct{}) {
 	case <-bequit:
 		// err = cmd.Process.Signal(syscall.SIGINT) // not just to parent process but to whole process group (negative pid)
 		// log.Println("got quit...killing...")
-		// err = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
-		// log.Println("sent interapt signal to ", -cmd.Process.Pid)
-		// check(err)
+		err = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
+		log.Println("sent interapt signal to ", -cmd.Process.Pid)
+		check(err)
 	}
 
 	err = cmd.Wait() // ignore killed signal
@@ -313,7 +328,11 @@ func exp1sp() {
 	// slis
 	for i := 0; i < repeat; i++ {
 		slis := mutilateScan(0, qps, qps/2, 1)
-		fmt.Printf("avg=%f slis=%+v\n", avg(slis), slis)
+		// fmt.Printf("avg=%f slis=%+v\n", avg(slis), slis)
+		for i, sli := range slis {
+			store("sli", slis)
+		}
+
 	}
 
 	// with
@@ -339,15 +358,15 @@ func exp1sp() {
 func exp2be() {
 	bequit := make(chan struct{})
 	go be(1, bequit)
-	log.Println("sleep for 10")
-	time.Sleep(10 * time.Second)
+	log.Println("sleep for 6")
+	time.Sleep(6 * time.Second)
 
 	// quit
 	log.Println("quit")
 	close(bequit)
 
-	log.Println("sleep for 15")
-	time.Sleep(15 * time.Second)
+	log.Println("sleep for 5")
+	time.Sleep(5 * time.Second)
 
 	// done
 	log.Println("exit")
@@ -367,6 +386,7 @@ func exp3prodalone() {
 
 	cgcreate("prod")
 	cpucores("prod", numcpu)
+	// cpumems("asdfasdf", "1-2")
 
 	// prod
 	go memcache(numcpu)
@@ -467,9 +487,9 @@ func exp4heracles() {
 }
 
 func main() {
-	// exp1sp()
+	exp1sp()
 	// exp2be()
 	// exp3prodalone()
-	exp3prodalone2()
+	// exp3prodalone2()
 	// exp4heracles()
 }
