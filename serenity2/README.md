@@ -343,3 +343,35 @@ echo 0 > /sys/fs/cgroup/cpuset/prod/cpuset.cpus
 ### memcache
 cgexec -g cpuset:/prod ./serenity2/heracles/memcached/memcached
 
+
+# long chain output
+```
+---------------- P1 just pass --------------------------
+2016/04/13 16:39:30 2016/04/13 16:39:30 processor:Process called
+2016/04/13 16:39:30 2016/04/13 16:39:30 PROCESSOR-DUMP: 2016-04-13 16:39:30.987993735 +0200 CEST|[serenity2 input metric1]|42
+
+---------------- P4 new -------------------
+2016/04/13 16:39:30 2016/04/13 16:39:30 processor:Process called
+2016/04/13 16:39:30 2016/04/13 16:39:30 PROCESS-METRICS: (func([]plugin.PluginMetricType) []plugin.PluginMetricType)(0x4011a0)
+2016/04/13 16:39:30 2016/04/13 16:39:30 new: 43
+2016/04/13 16:39:30 2016/04/13 16:39:30 PROCESSOR-DUMP: 2016-04-13 16:39:30.987993735 +0200 CEST|[serenity2 input metric1]|42
+2016/04/13 16:39:30 2016/04/13 16:39:30 PROCESSOR-DUMP: 2016-04-13 16:39:30.989330084 +0200 CEST|[serenity2 process metric-p4-new]|43
+
+---------------- P3 invert -----------------
+2016/04/13 16:39:30 2016/04/13 16:39:30 processor:Process called
+2016/04/13 16:39:30 2016/04/13 16:39:30 PROCESS-METRICS: (func([]plugin.PluginMetricType) []plugin.PluginMetricType)(0x4011a0)
+2016/04/13 16:39:30 2016/04/13 16:39:30 inverted: -42
+2016/04/13 16:39:30 2016/04/13 16:39:30 inverted: -43
+2016/04/13 16:39:30 2016/04/13 16:39:30 PROCESSOR-DUMP: 2016-04-13 16:39:30.987993735 +0200 CEST|[serenity2 input metric1]|-42
+2016/04/13 16:39:30 2016/04/13 16:39:30 PROCESSOR-DUMP: 2016-04-13 16:39:30.989330084 +0200 CEST|[serenity2 process metric-p4-new]|-43
+
+---------------- P2 pass again --------------------
+2016/04/13 16:39:30 2016/04/13 16:39:30 processor:Process called
+2016/04/13 16:39:30 2016/04/13 16:39:30 PROCESSOR-DUMP: 2016-04-13 16:39:30.987993735 +0200 CEST|[serenity2 input metric1]|-42
+2016/04/13 16:39:30 2016/04/13 16:39:30 PROCESSOR-DUMP: 2016-04-13 16:39:30.989330084 +0200 CEST|[serenity2 process metric-p4-new]|-43
+
+--------------- O2 publish --------------------
+2016/04/13 16:39:30 2016/04/13 16:39:30 output:Publish called
+2016/04/13 16:39:30 2016/04/13 16:39:30 PUBLISHER-DUMP: 2016-04-13 16:39:30.987993735 +0200 CEST|[serenity2 input metric1]|-42
+2016/04/13 16:39:30 2016/04/13 16:39:30 PUBLISHER-DUMP: 2016-04-13 16:39:30.989330084 +0200 CEST|[serenity2 process metric-p4-new]|-43
+```
