@@ -15,7 +15,10 @@ import (
 )
 
 // processor implements ProcessorPlugin
-type Processor struct{}
+type Processor struct {
+	// Process just one metric
+	ProcessMetrics func(metrics []plugin.PluginMetricType) []plugin.PluginMetricType
+}
 
 // Process just passthrough content
 func (p *Processor) Process(contentType string, content []byte, config map[string]ctypes.ConfigValue) (string, []byte, error) {
@@ -32,6 +35,21 @@ func (p *Processor) Process(contentType string, content []byte, config map[strin
 	default:
 		log.Printf("Error unknown content type '%v'", contentType)
 		return "", nil, errors.New(fmt.Sprintf("Unknown content type '%s'", contentType))
+	}
+
+	if p.ProcessMetrics != nil {
+		log.Printf("PROCESS-METRICS: %#v\n", p.ProcessMetrics)
+
+		metrics = p.ProcessMetrics(metrics)
+
+		// encode
+		b := &bytes.Buffer{}
+		err := gob.NewEncoder(b).Encode(&metrics)
+		if err != nil {
+			log.Panicln("cannot encode metrics:", err)
+		}
+		content = b.Bytes()
+
 	}
 
 	for _, m := range metrics {

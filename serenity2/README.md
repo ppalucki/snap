@@ -22,6 +22,8 @@ go install github.com/intelsdi-x/snap/serenity2/i1
 go install github.com/intelsdi-x/snap/serenity2/i2
 go install github.com/intelsdi-x/snap/serenity2/p1
 go install github.com/intelsdi-x/snap/serenity2/p2
+go install github.com/intelsdi-x/snap/serenity2/p3-invert
+go install github.com/intelsdi-x/snap/serenity2/p4-new
 go install github.com/intelsdi-x/snap/serenity2/o1
 go install github.com/intelsdi-x/snap/serenity2/o2
 ``` 
@@ -33,6 +35,8 @@ go install github.com/intelsdi-x/snap/serenity2/o2
 ./build/bin/snapctl plugin load `which i2`
 ./build/bin/snapctl plugin load `which p1`
 ./build/bin/snapctl plugin load `which p2`
+./build/bin/snapctl plugin load `which p3-invert`
+./build/bin/snapctl plugin load `which p4-new`
 ./build/bin/snapctl plugin load `which o1`
 ./build/bin/snapctl plugin load `which o2`
 ```
@@ -68,6 +72,18 @@ go install github.com/intelsdi-x/snap/serenity2/o2
 ### complex
 ```
 ./build/bin/snapctl task create -t serenity2/tasks/complex.yaml
+```
+
+### chain
+```
+# just passing
+./build/bin/snapctl task create -t serenity2/tasks/chain.yaml
+# invert
+./build/bin/snapctl task create -t serenity2/tasks/chain-invert.yaml
+# new
+./build/bin/snapctl task create -t serenity2/tasks/chain-new.yaml
+# long (pass-new-invert-pass)
+./build/bin/snapctl task create -t serenity2/tasks/chain-long.yaml
 ```
 
 ## list 
