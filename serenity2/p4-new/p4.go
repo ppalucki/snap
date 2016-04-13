@@ -25,9 +25,10 @@ func main() {
 			ProcessMetrics: func(metrics []plugin.PluginMetricType) []plugin.PluginMetricType {
 				// add new metrics 43
 
-				log.Printf("new: %#v\n", 43)
+				v := float64(43)
+				log.Printf("new: %#v\n", v)
 				new := plugin.PluginMetricType{
-					Data_:      43,
+					Data_:      v,
 					Namespace_: []string{"serenity2", "process", "metric-p4-new"},
 					Timestamp_: time.Now(),
 				}
