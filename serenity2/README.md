@@ -3,7 +3,7 @@
 ## build & run
 ```
 go build -o ./build/bin/snapd github.com/intelsdi-x/snap
-./build/bin/snapd --plugin-trust=0 --log-level=1
+./build/bin/snapd --plugin-trust=0 --log-level=1 --config=serenity2/tasks/mesos-global-conf.json
 ```
 
 ### snapctl
@@ -377,10 +377,13 @@ cgexec -g cpuset:/prod ./serenity2/heracles/memcached/memcached
 ```
 
 ### real collectors
-deps
-```
-go get github.com/intelsdi-x/snap-plugin-utilities/config
+
+#### Mesos agent
+
+##### deps
 go get github.com/intelsdi-x/snap-plugin-utilities/ns
+
+##### build
 go get -v github.com/intelsdi-x/snap-plugin-collector-mesos
 (
 cd $GOPATH/src/github.com/intelsdi-x/snap-plugin-collector-mesos
@@ -390,8 +393,87 @@ go build
 ls $GOPATH/src/github.com/intelsdi-x/snap-plugin-collector-mesos/snap-plugin-collector-mesos
 )
 
+##### load 
+./build/bin/snapctl plugin load `which snap-plugin-collector-mesos`
 
-# load
-./build/bin/snapctl plugin load $GOPATH/src/github.com/intelsdi-x/snap-plugin-collector-mesos/snap-plugin-collector-mesos
+#### task
+./build/bin/snapctl task create -t serenity2/tasks/mesos.yaml
+
+
+#### example output
+http://127.0.0.1:5051/monitor/statistics
+
+
+>> task watch
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/cpus_limit                   1.1                     2016-04-15 15:36:52.675641984 +0200 CEST        gklab-126-081
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/cpus_system_time_secs        0.03                    2016-04-15 15:36:52.675641984 +0200 CEST        gklab-126-081
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/cpus_user_time_secs          14.32                   2016-04-15 15:36:52.675641984 +0200 CEST        gklab-126-081
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/mem_limit_bytes              1.6777216e+08           2016-04-15 15:36:52.675641984 +0200 CEST        gklab-126-081
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/perf/duration                0                       2016-04-15 15:36:52.675641984 +0200 CEST        gklab-126-081
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/perf/timestamp               1.46072739835631e+09    2016-04-15 15:36:52.675641984 +0200 CEST        gklab-126-081
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/timestamp                    1.46072741267457e+09    2016-04-15 15:36:52.675641984 +0200 CEST        gklab-126-081
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/cpus_limit                   1.1                     2016-04-15 15:37:22.675926443 +0200 CEST        gklab-126-081
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/cpus_system_time_secs        0.06                    2016-04-15 15:37:22.675926443 +0200 CEST        gklab-126-081
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/cpus_user_time_secs          44.36                   2016-04-15 15:37:22.675926443 +0200 CEST        gklab-126-081
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/mem_limit_bytes              1.6777216e+08           2016-04-15 15:37:22.675926443 +0200 CEST        gklab-126-081
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/perf/duration                1                       2016-04-15 15:37:22.675926443 +0200 CEST        gklab-126-081
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/perf/instructions            7.645007664e+09         2016-04-15 15:37:22.675926443 +0200 CEST        gklab-126-081
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/perf/timestamp               1.46072743537553e+09    2016-04-15 15:37:22.675926443 +0200 CEST        gklab-126-081
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/timestamp                    1.46072744267483e+09    2016-04-15 15:37:22.675926443 +0200 CEST        gklab-126-081
+
+>> snapctl metric list
+
+
+# other collectors
+
+go get github.com/intelsdi-x/snap-plugin-collector-pcm
+go get github.com/intelsdi-x/snap-plugin-collector-perfevents
+go install github.com/intelsdi-x/snap-plugin-collector-pcm
+go install github.com/intelsdi-x/snap-plugin-collector-perfevents
+
+./build/bin/snapctl plugin load `which snap-plugin-collector-pcm`
+./build/bin/snapctl plugin load `which snap-plugin-collector-perfevents`
+
+./build/bin/snapctl task create -t serenity2/tasks/pcm.yaml
+
 ```
+NAMESPACE                                                                                        VERSIONS
+/intel/mesos/agent/*/foo                                                                         1
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0007/cpus_limit                   1
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0007/cpus_system_time_secs        1
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0007/cpus_user_time_secs          1
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0007/mem_limit_bytes              1
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0007/perf/duration                1
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0007/perf/instructions            1
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0007/perf/timestamp               1
+/intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0007/timestamp                    1
 
+/intel/pcm/ACYC                  321             2016-04-15 16:33:20.813281473 +0200 CEST        gklab-126-081
+/intel/pcm/AFREQ                 0.0915          2016-04-15 16:33:20.813278144 +0200 CEST        gklab-126-081
+/intel/pcm/C0res%                12.8            2016-04-15 16:33:20.813283589 +0200 CEST        gklab-126-081
+/intel/pcm/C1res%                18.2            2016-04-15 16:33:20.813283856 +0200 CEST        gklab-126-081
+/intel/pcm/C2res%                0               2016-04-15 16:33:20.813285212 +0200 CEST        gklab-126-081
+/intel/pcm/C3res%                0               2016-04-15 16:33:20.813284189 +0200 CEST        gklab-126-081
+/intel/pcm/C6res%                0               2016-04-15 16:33:20.813284469 +0200 CEST        gklab-126-081
+/intel/pcm/C7res%                0               2016-04-15 16:33:20.813284739 +0200 CEST        gklab-126-081
+/intel/pcm/EXEC                  0.0249          2016-04-15 16:33:20.813276765 +0200 CEST        gklab-126-081
+/intel/pcm/FREQ                  0.0117          2016-04-15 16:33:20.81327771 +0200 CEST         gklab-126-081
+/intel/pcm/INST                  682             2016-04-15 16:33:20.813281185 +0200 CEST        gklab-126-081
+/intel/pcm/INSTnom               0.0498          2016-04-15 16:33:20.813282814 +0200 CEST        gklab-126-081
+/intel/pcm/INSTnom%              1.24            2016-04-15 16:33:20.813283214 +0200 CEST        gklab-126-081
+/intel/pcm/IPC                   2.12            2016-04-15 16:33:20.813277354 +0200 CEST        gklab-126-081
+/intel/pcm/L2CLK                 0.0427          2016-04-15 16:33:20.813280189 +0200 CEST        gklab-126-081
+/intel/pcm/L2HIT                 0.233           2016-04-15 16:33:20.81327954 +0200 CEST         gklab-126-081
+/intel/pcm/L2MISS                0.602           2016-04-15 16:33:20.813278971 +0200 CEST        gklab-126-081
+/intel/pcm/L3CLK                 0.158           2016-04-15 16:33:20.813279862 +0200 CEST        gklab-126-081
+/intel/pcm/L3HIT                 0.532           2016-04-15 16:33:20.813279254 +0200 CEST        gklab-126-081
+/intel/pcm/L3MISS                0.282           2016-04-15 16:33:20.813278602 +0200 CEST        gklab-126-081
+/intel/pcm/PhysIPC               4.25            2016-04-15 16:33:20.8132822 +0200 CEST          gklab-126-081
+/intel/pcm/PhysIPC%              106             2016-04-15 16:33:20.813282543 +0200 CEST        gklab-126-081
+/intel/pcm/Proc_Energy_Joules    25.3            2016-04-15 16:33:20.81328561 +0200 CEST         gklab-126-081
+/intel/pcm/READ                  0.0234          2016-04-15 16:33:20.81328058 +0200 CEST         gklab-126-081
+/intel/pcm/SKT0                  25.3            2016-04-15 16:33:20.813286316 +0200 CEST        gklab-126-081
+/intel/pcm/TEMP                  51              2016-04-15 16:33:20.813285921 +0200 CEST        gklab-126-081
+/intel/pcm/TIME_ticks            3430            2016-04-15 16:33:20.81328189 +0200 CEST         gklab-126-081
+/intel/pcm/WRITE                 0.0161          2016-04-15 16:33:20.813280863 +0200 CEST        gklab-126-081
+```

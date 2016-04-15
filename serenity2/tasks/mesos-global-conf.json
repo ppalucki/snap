@@ -1,13 +1,13 @@
 {
-    "plugins": {
-        "collector": {
-            "mesos": {
-                "all": {
-                    "url": "http://localhost:3000/db"
-                }
-            }
-        }
-    },
-    "publisher": {},
-    "processor": {}
+"control":{
+"plugins":{
+"collector":{
+"mesos":{
+"all":{
+    "url":"http://127.0.0.1:5051/monitor/statistics"
+}
+}
+}
+}
+}
 }

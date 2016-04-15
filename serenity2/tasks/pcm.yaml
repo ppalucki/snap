@@ -6,7 +6,7 @@
   workflow: 
     collect: 
       metrics: 
-        /intel/mesos/agent/*/foo: {}
+        /intel/pcm/*: {}
       publish: 
         - 
           plugin_name: "o1"
