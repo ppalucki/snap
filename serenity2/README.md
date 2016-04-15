@@ -435,11 +435,9 @@ http://127.0.0.1:5051/monitor/statistics
 
 ```
 
->> snapctl metric list
-
-
 # other collectors pcm & perfevents
 
+```
 go get github.com/intelsdi-x/snap-plugin-collector-pcm
 go get github.com/intelsdi-x/snap-plugin-collector-perfevents
 go install github.com/intelsdi-x/snap-plugin-collector-pcm
@@ -449,6 +447,9 @@ go install github.com/intelsdi-x/snap-plugin-collector-perfevents
 ./build/bin/snapctl plugin load `which snap-plugin-collector-perfevents`
 
 ./build/bin/snapctl task create -t serenity2/tasks/pcm.yaml
+```
+
+##### pcm output
 
 ```
 NAMESPACE                                                                                        VERSIONS
@@ -491,3 +492,11 @@ NAMESPACE                                                                       
 /intel/pcm/TIME_ticks            3430            2016-04-15 16:33:20.81328189 +0200 CEST         gklab-126-081
 /intel/pcm/WRITE                 0.0161          2016-04-15 16:33:20.813280863 +0200 CEST        gklab-126-081
 ```
+
+
+##### perfevents output
+```
+Error loading plugin:
+GetMetricTypes call error : insufficient perf event subsystem capabilities
+```
+
