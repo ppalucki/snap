@@ -375,3 +375,23 @@ cgexec -g cpuset:/prod ./serenity2/heracles/memcached/memcached
 2016/04/13 16:39:30 2016/04/13 16:39:30 PUBLISHER-DUMP: 2016-04-13 16:39:30.987993735 +0200 CEST|[serenity2 input metric1]|-42
 2016/04/13 16:39:30 2016/04/13 16:39:30 PUBLISHER-DUMP: 2016-04-13 16:39:30.989330084 +0200 CEST|[serenity2 process metric-p4-new]|-43
 ```
+
+### real collectors
+deps
+```
+go get github.com/intelsdi-x/snap-plugin-utilities/config
+go get github.com/intelsdi-x/snap-plugin-utilities/ns
+go get -v github.com/intelsdi-x/snap-plugin-collector-mesos
+(
+cd $GOPATH/src/github.com/intelsdi-x/snap-plugin-collector-mesos
+git fetch origin pull/1/head:marcin-krolik/kromar-mesos-wip
+git co marcin-krolik:kromar-mesos-wip
+go build
+ls $GOPATH/src/github.com/intelsdi-x/snap-plugin-collector-mesos/snap-plugin-collector-mesos
+)
+
+
+# load
+./build/bin/snapctl plugin load $GOPATH/src/github.com/intelsdi-x/snap-plugin-collector-mesos/snap-plugin-collector-mesos
+```
+
