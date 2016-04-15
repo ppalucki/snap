@@ -1,0 +1,15 @@
+---
+  version: 1
+  schedule: 
+    type: "simple"
+    interval: "15s"
+  workflow: 
+    collect: 
+      metrics: 
+        /intel/mesos/agent/*: {}
+      config:
+        /intel/mesos/:
+          url: "http://127.0.0.1:5050/monitor/statistics"
+      publish: 
+        - 
+          plugin_name: "file"
