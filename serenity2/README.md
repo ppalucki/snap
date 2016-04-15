@@ -381,9 +381,11 @@ cgexec -g cpuset:/prod ./serenity2/heracles/memcached/memcached
 #### Mesos agent
 
 ##### deps
+
 go get github.com/intelsdi-x/snap-plugin-utilities/ns
 
 ##### build
+```
 go get -v github.com/intelsdi-x/snap-plugin-collector-mesos
 (
 cd $GOPATH/src/github.com/intelsdi-x/snap-plugin-collector-mesos
@@ -392,19 +394,29 @@ git co marcin-krolik:kromar-mesos-wip
 go build
 ls $GOPATH/src/github.com/intelsdi-x/snap-plugin-collector-mesos/snap-plugin-collector-mesos
 )
+```
 
 ##### load 
+```
+
 ./build/bin/snapctl plugin load `which snap-plugin-collector-mesos`
+```
+
 
 #### task
+```
 ./build/bin/snapctl task create -t serenity2/tasks/mesos.yaml
+```
 
 
 #### example output
+
+```
 http://127.0.0.1:5051/monitor/statistics
-
-
 >> task watch
+```
+
+```
 /intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/cpus_limit                   1.1                     2016-04-15 15:36:52.675641984 +0200 CEST        gklab-126-081
 /intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/cpus_system_time_secs        0.03                    2016-04-15 15:36:52.675641984 +0200 CEST        gklab-126-081
 /intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/cpus_user_time_secs          14.32                   2016-04-15 15:36:52.675641984 +0200 CEST        gklab-126-081
@@ -421,10 +433,12 @@ http://127.0.0.1:5051/monitor/statistics
 /intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/perf/timestamp               1.46072743537553e+09    2016-04-15 15:37:22.675926443 +0200 CEST        gklab-126-081
 /intel/mesos/agent/stress/b2cf6b8b-e302-4afa-bc20-e93c7fce5e23-0008/timestamp                    1.46072744267483e+09    2016-04-15 15:37:22.675926443 +0200 CEST        gklab-126-081
 
+```
+
 >> snapctl metric list
 
 
-# other collectors
+# other collectors pcm & perfevents
 
 go get github.com/intelsdi-x/snap-plugin-collector-pcm
 go get github.com/intelsdi-x/snap-plugin-collector-perfevents
